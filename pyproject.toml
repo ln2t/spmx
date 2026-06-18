@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spmx"
+dynamic = ["version"]
+description = "A BIDS-compliant wrapper for SPM processing via MATLAB"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [
+    {name = "ln2t"},
+]
+dependencies = [
+    "pybids>=0.16",
+    "nibabel>=5.0",
+    "nilearn>=0.10",
+    "matplotlib>=3.5",
+    "numpy",
+    "pandas",
+    "pyyaml",
+    "h5py",
+    "scipy"
+]
+
+[project.scripts]
+spmx = "spmx.cli:main"
+
+[tool.setuptools]
+packages = ["spmx", "spmx.fmri", "spmx.pet"]
+
+[tool.setuptools.package-data]
+spmx = ["templates/*.m"]
+
+[tool.setuptools.dynamic.version]
+attr = "spmx._version.__version__"

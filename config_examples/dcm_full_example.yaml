@@ -1,0 +1,102 @@
+# spmx: Complete DCM Configuration
+# This config shows typical settings for DCM analysis:
+# - Seed definitions for Default Mode Network
+# - Optional DCM seed narrowing (subset of VOI seeds)
+# - Resting-state model
+# - VOI delays and DCM options
+
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12
+
+fmri:
+  fit:
+    fmri_t: 16
+    fmri_t0: 8
+    hpf: 128
+    smooth: 0               # Gaussian smoothing FWHM in mm (0=no smoothing)
+    regressors:             # Confound regressors to include
+      - trans_x
+      - trans_y
+      - trans_z
+      - rot_x
+      - rot_y
+      - rot_z
+
+  voi:
+    # Global seed radius (mm) — can be overridden per seed
+    radius: 8
+    
+    # Seed definitions: Default Mode Network
+    seeds:
+      # Posterior Cingulate Cortex
+      - name: "PCC"
+        x: 0
+        y: -52
+        z: 18
+        radius: 5  # Override global radius for this seed
+    
+      # Medial Prefrontal Cortex
+      - name: "mPFC"
+        x: 0
+        y: 52
+        z: 0
+        radius: 6
+    
+      # Left Inferior Parietal Lobule
+      - name: "LIPL"
+        x: -45
+        y: -70
+        z: 35
+        # radius omitted: uses global default (8 mm)
+    
+      # Right Inferior Parietal Lobule
+      - name: "RIPL"
+        x: 45
+        y: -70
+        z: 35
+
+  dcm:
+    # OPTIONAL: Specify a subset of VOI seeds for DCM analysis
+    # If omitted, all VOI seeds will be used
+    # This allows you to extract timeseries from all regions (--voi)
+    # but model only a subset in DCM (--dcm)
+    seeds:
+      - "mPFC"     # Include only mPFC
+      - "PCC"      # and PCC
+      # LIPL and RIPL are omitted, so they won't be included in DCM
+
+    # VOI extraction delays (seconds)
+    # These represent the temporal delay of the BOLD response for each ROI
+    delays:
+      PCC: 1.5
+      mPFC: 1.5
+      LIPL: 1.5
+      RIPL: 1.5
+    
+    # Default delay if a seed is missing from the delays list
+    default_delay: 1.5
+    
+    # DCM estimation options (Resting-state)
+    options:
+      nonlinear: 0           # Nonlinear DCM (0=linear; default: 0)
+      two_state: 0           # Two-state hemodynamic model (0=standard; default: 0)
+      stochastic: 0          # Stochastic DCM (0=deterministic; default: 0)
+      centre: 0              # Centering option (0=off; default: 0)
+      induced: 1             # DCM mode: 1=CSD (resting-state), 0=timeseries (task)
+    
+    # Pre-defined model for resting-state
+    # Use --model resting-state-full from CLI, or define custom models below:
+    models:
+      - name: "resting-state-full"
+        # A matrix: fully connected (bidirectional influences)
+        A: [[1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1]]
+        # B matrix: no bilinear modulations (resting-state has no tasks)
+        B: [[0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]]
+        # C matrix: no exogenous inputs
+        C: [0, 0, 0, 0]

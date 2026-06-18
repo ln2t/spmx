@@ -1,0 +1,1 @@
+"""fMRI module for spmx."""

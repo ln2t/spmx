@@ -1,0 +1,95 @@
+# spmx: Advanced Configuration
+# This config demonstrates advanced options including custom DCM models.
+
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12
+
+fmri:
+  fit:
+    fmri_t: 16
+    fmri_t0: 8
+    hpf: 128
+    cond_tmod: 0
+    cond_orth: 1
+    write_residuals: 0
+    smooth: 0               # Gaussian smoothing FWHM in mm (0=no smoothing)
+    regressors:             # Confound regressors to include
+      - trans_x
+      - trans_y
+      - trans_z
+      - rot_x
+      - rot_y
+      - rot_z
+
+  voi:
+    radius: 8
+    
+    seeds:
+      # Visual processing network
+      - name: "V1"          # Primary visual cortex
+        x: 0
+        y: -90
+        z: 0
+        radius: 6
+      
+      - name: "V5"          # Motion-sensitive area
+        x: -45
+        y: -65
+        z: 0
+        radius: 6
+      
+      - name: "IT"          # Inferotemporal cortex
+        x: -50
+        y: -40
+        z: -15
+        radius: 6
+
+  dcm:
+    default_delay: 1.5
+    
+    delays:
+      V1: 1.3
+      V5: 1.5
+      IT: 1.7
+    
+    # Multiple DCM models:
+    # 1. Hierarchical: V1 -> V5 -> IT (feedforward)
+    # 2. Lateral: V1 <-> V5 <-> IT (lateral connections)
+    # 3. Full: all connections active
+    models:
+      - name: "hierarchical"
+        # Feedforward: V1->V5, V5->IT, but no backward connections
+        A: [[0, 0, 0],
+            [1, 0, 0],
+            [0, 1, 0]]
+        B: [[0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]]
+        C: [1, 0, 0]  # V1 receives exogenous input
+      
+      - name: "lateral"
+        # Lateral: V1 <-> V5 <-> IT
+        A: [[0, 1, 0],
+            [1, 0, 1],
+            [0, 1, 0]]
+        B: [[0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]]
+        C: [1, 0, 0]
+      
+      - name: "full"
+        # Full connectivity: all regions connected bidirectionally
+        A: [[0, 1, 1],
+            [1, 0, 1],
+            [1, 1, 0]]
+        B: [[0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]]
+        C: [1, 0, 0]
+    
+    options:
+      nonlinear: 0
+      two_state: 0
+      stochastic: 0
+      centre: 0
+      induced: 1

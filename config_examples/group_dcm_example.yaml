@@ -1,0 +1,98 @@
+# spmx: Group-level DCM (PEB) Configuration Example
+# This config demonstrates group-level parametric empirical Bayes (PEB) analysis.
+#
+# Required:
+# 1. First run participant-level analysis:
+#    - --fit to specify and estimate GLM models
+#    - --voi to extract VOI timeseries from seed regions
+#    - --dcm to specify and estimate participant-level DCM models
+#
+# 2. Then run group-level analysis:
+#    spmx fmri INPUT OUTPUT group --dcm \
+#        --model resting-state-full \
+#        --participants-file /path/to/participants.tsv \
+#        --regressors age group IQ \
+#        --categorical-regressors group \
+#        --group-name PEB_group_analysis \
+#        --config this_file.yaml
+
+# MATLAB and SPM paths
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12
+
+# fMRI configuration
+fmri:
+  # VOI extraction parameters (used in participant-level analysis)
+  voi:
+    seeds:
+      - name: PCC
+        coord: [0, -52, 26]  # Posterior Cingulate Cortex
+        label: "Posterior Cingulate Cortex"
+      - name: mPFC
+        coord: [0, 52, -2]   # Medial Prefrontal Cortex
+        label: "Medial Prefrontal Cortex"
+      - name: LIPL
+        coord: [-42, -58, 52]  # Left Inferior Parietal Lobe
+        label: "Left Inferior Parietal Lobe"
+
+  # DCM configuration
+  dcm:
+    # DCM model name (optional, can also be specified via --model CLI argument)
+    # CLI argument takes precedence if both are specified
+    model: resting-state-full
+    
+    # Default VOI delay in seconds
+    default_delay: 1.5
+    
+    # Seed names to use in DCM (subset of voi.seeds)
+    seeds:
+      - PCC
+      - mPFC
+      - LIPL
+    
+    # Per-seed delays (in seconds) - overrides default_delay
+    delays:
+      - PCC: 1.5
+        mPFC: 1.5
+        LIPL: 1.5
+    
+    # Echo time (if not found in SPM.mat sidecar)
+    EchoTime: 0.04
+    
+    # DCM estimation options
+    options:
+      nonlinear: 0      # Non-linear DCM (0=linear, 1=nonlinear)
+      two_state: 0      # Two-state model (0=one-state, 1=two-state)
+      stochastic: 0     # Stochastic effects (0=deterministic, 1=stochastic)
+      centre: 0         # Centre timeseries (0=no, 1=yes)
+      induced: 1        # For resting-state: use CSD analysis (1=yes)
+    
+    # Analysis type: 'csd' for resting-state, 'timeseries' for task
+    analysis: csd
+
+# Example participants file structure (participants.tsv):
+# 
+# participant_id    age    sex    group    IQ
+# sub-001           25     M      control  112
+# sub-002           28     F      patient  108
+# sub-003           26     M      control  115
+# sub-004           31     F      patient  105
+# 
+# Command-line usage:
+# 
+# # Option 1: Specify model via CLI argument (overrides config)
+# spmx fmri /data/fmriprep /data/derivatives group --dcm \
+#     --model resting-state-full \
+#     --participants-file /data/participants.tsv \
+#     --regressors age group IQ \
+#     --categorical-regressors group \
+#     --group-name PEB_resting_state \
+#     --config config_examples/group_dcm_example.yaml
+#
+# # Option 2: Use model from config (if not specified via CLI)
+# spmx fmri /data/fmriprep /data/derivatives group --dcm \
+#     --participants-file /data/participants.tsv \
+#     --regressors age group IQ \
+#     --categorical-regressors group \
+#     --group-name PEB_resting_state \
+#     --config config_examples/group_dcm_example.yaml

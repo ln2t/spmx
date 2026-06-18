@@ -1,0 +1,86 @@
+# spmx: Task-Based fMRI Configuration Example
+# This config shows settings for task-based fMRI analysis with multiple conditions.
+
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12
+
+fmri:
+  fit:
+    # Standard fMRI GLM settings for task-based analysis
+    fmri_t: 16              # Microtime resolution
+    fmri_t0: 8              # Reference microtime
+    hpf: 128                # High-pass filter (removes low-frequency drifts)
+    cond_tmod: 0            # No temporal modulation
+    cond_orth: 1            # Orthogonalize condition regressors
+    write_residuals: 0      # Don't save residual images
+    smooth: 0               # Gaussian smoothing FWHM in mm (0=no smoothing)
+    regressors:             # Confound regressors (from confounds_timeseries.tsv)
+      - trans_x             # Translation X
+      - trans_y             # Translation Y
+      - trans_z             # Translation Z
+      - rot_x               # Rotation X
+      - rot_y               # Rotation Y
+      - rot_z               # Rotation Z
+
+  voi:
+    # VOI extraction from seed regions
+    radius: 6               # Default sphere radius (mm)
+    
+    seeds:
+      - name: "DLPFC"       # Dorsolateral Prefrontal Cortex
+        x: -40
+        y: 50
+        z: 20
+      
+      - name: "parietal"    # Parietal cortex
+        x: -30
+        y: -60
+        z: 50
+
+  dcm:
+    # Note: DCM currently only supports resting-state (induced=1)
+    # Task-based DCM will be added in future releases
+    default_delay: 1.5
+    
+    delays:
+      DLPFC: 1.5
+      parietal: 1.5
+    
+    options:
+      nonlinear: 0
+      two_state: 0
+      stochastic: 0
+      centre: 0
+      induced: 1            # Note: use induced=0 for task-based DCM (future)
+
+# Example usage with this config:
+# 
+# 1. Full pipeline (fit + VOI + DCM) in one command:
+# spmx fmri /data/fmriprep /data/spm --fit --voi --dcm \
+#   --participant-label 01 02 03 \
+#   --task working_memory \
+#   --condition easy hard \
+#   --confound trans_x trans_y trans_z rot_x rot_y rot_z \
+#   --contrast "hard - easy" \
+#   --model resting-state-full \
+#   --config task_based_example.yaml
+#
+# Or run steps separately (all sharing the same OUTPUT_DIR):
+#
+# 2. GLM fitting only:
+# spmx fmri /data/fmriprep /data/spm --fit \
+#   --participant-label 01 02 03 \
+#   --task working_memory \
+#   --condition easy hard \
+#   --confound trans_x trans_y trans_z rot_x rot_y rot_z \
+#   --contrast "hard - easy" \
+#   --config task_based_example.yaml
+#
+# 3. VOI extraction (same OUTPUT_DIR):
+# spmx fmri /data/fmriprep /data/spm --voi \
+#   --config task_based_example.yaml
+#
+# 4. DCM (same OUTPUT_DIR, current: resting-state only):
+# spmx fmri /data/fmriprep /data/spm --dcm \
+#   --model resting-state-full \
+#   --config task_based_example.yaml

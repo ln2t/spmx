@@ -1,0 +1,222 @@
+# spmx: Complete Workflow Example
+# This config file demonstrates a full analysis pipeline from GLM to DCM,
+# with all recommended settings for resting-state fMRI.
+
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12
+
+fmri:
+  # GLM Fitting Parameters
+  fit:
+    fmri_t: 16              # Microtime bins per TR (SPM standard: 16)
+    fmri_t0: 8              # Reference microtime (middle of TR)
+    hpf: 128                # High-pass filter: 128s ≈ 2.1 min (standard for resting-state)
+    cond_tmod: 0            # Temporal modulation (0=disabled, used for task design)
+    cond_orth: 1            # Orthogonalize regressors (1=yes, recommended)
+    write_residuals: 0      # Save residual images (0=no, saves disk space)
+    smooth: 0               # Gaussian smoothing FWHM in mm (0=no smoothing)
+    regressors:             # Confound regressors (from confounds_timeseries.tsv)
+      - trans_x
+      - trans_y
+      - trans_z
+      - rot_x
+      - rot_y
+      - rot_z
+      - csf
+      - white_matter
+
+  # VOI and DCM Parameters
+  voi:
+    # Default VOI extraction radius
+    radius: 8               # Standard 8mm spheres
+
+    # Define ROIs for resting-state DCM
+    # Coordinates in MNI152 2009c Asymmetric template
+    seeds:
+      # Posterior Cingulate Cortex (DMN hub)
+      - name: "PCC"
+        x: 0
+        y: -52
+        z: 18
+        radius: 5           # Slightly smaller for PCC
+      
+      # Medial Prefrontal Cortex (DMN hub)
+      - name: "mPFC"
+        x: 0
+        y: 52
+        z: 0
+        radius: 6
+      
+      # Left Inferior Parietal Lobule (DMN)
+      - name: "LIPL"
+        x: -45
+        y: -70
+        z: 35
+      
+      # Right Inferior Parietal Lobule (DMN)
+      - name: "RIPL"
+        x: 45
+        y: -70
+        z: 35
+      
+      # Left angular gyrus (DMN posterior component)
+      - name: "LAG"
+        x: -50
+        y: -60
+        z: 35
+      
+      # Right angular gyrus (DMN posterior component)
+      - name: "RAG"
+        x: 50
+        y: -60
+        z: 35
+
+  dcm:
+    # VOI extraction delays (seconds)
+    # Typical HRF delay for cortical regions: 1.5-2.0s
+    delays:
+      PCC: 1.5
+      mPFC: 1.5
+      LIPL: 1.5
+      RIPL: 1.5
+      LAG: 1.6
+      RAG: 1.6
+    
+    # Default delay for seeds not explicitly listed
+    default_delay: 1.5
+    
+    # Define candidate models for Bayesian model selection
+    # Typically 3-4 competing models covering different hypotheses
+    models:
+      # Model 1: Fully connected (all parameters active)
+      - name: "full_model"
+        # A: Endogenous connections (1=bidirectional allowed)
+        A: [[0, 1, 1, 1, 1, 1],
+            [1, 0, 1, 1, 1, 1],
+            [1, 1, 0, 1, 1, 1],
+            [1, 1, 1, 0, 1, 1],
+            [1, 1, 1, 1, 0, 1],
+            [1, 1, 1, 1, 1, 0]]
+        # B: Bilinear modulations (0=none for resting-state)
+        B: [[0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
+        # C: Exogenous inputs (0=none for resting-state)
+        C: [0, 0, 0, 0, 0, 0]
+      
+      # Model 2: DMN hub structure (PCC/mPFC -> other regions)
+      - name: "dmn_hubs"
+        A: [[0, 1, 1, 1, 1, 1],
+            [1, 0, 1, 1, 1, 1],
+            [1, 1, 0, 1, 0, 0],
+            [1, 1, 1, 0, 0, 0],
+            [1, 1, 0, 0, 0, 1],
+            [1, 1, 0, 0, 1, 0]]
+        B: [[0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
+        C: [0, 0, 0, 0, 0, 0]
+      
+      # Model 3: Reduced (core DMN only: PCC, mPFC, LIPL, RIPL)
+      - name: "dmn_core"
+        A: [[1, 1, 1, 1, 0, 0],
+            [1, 1, 1, 1, 0, 0],
+            [1, 1, 1, 1, 0, 0],
+            [1, 1, 1, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
+        B: [[0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
+        C: [0, 0, 0, 0, 0, 0]
+      
+      # Model 4: Hierarchical (anterior hub: mPFC -> posterior components)
+      - name: "hierarchical"
+        A: [[1, 1, 1, 1, 0, 0],
+            [1, 0, 1, 1, 1, 1],
+            [1, 1, 0, 0, 1, 0],
+            [1, 1, 0, 0, 0, 1],
+            [0, 1, 1, 0, 0, 1],
+            [0, 1, 0, 1, 1, 0]]
+        B: [[0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0]]
+        C: [0, 0, 0, 0, 0, 0]
+    
+    # DCM estimation options (Resting-state)
+    options:
+      nonlinear: 0          # Linear DCM (nonlinear=0, recommended)
+      two_state: 0          # Standard HRF model (two_state=0)
+      stochastic: 0         # Deterministic DCM (stochastic=0)
+      centre: 0             # No centering (centre=0)
+      induced: 1            # CSD: 1=resting-state, 0=task-based (timeseries)
+
+# ============================================================================
+# COMPLETE WORKFLOW EXAMPLE
+# ============================================================================
+#
+# Assuming fMRIPrep-preprocessed data at: /data/fmriprep
+# Shared output directory: /data/spm
+#
+# OPTION A: Full pipeline in one command
+# ────────────────────────────────────────────────────────────────────────────
+# spmx fmri /data/fmriprep /data/spm --fit --voi --dcm \
+#   --participant-label 01 02 03 04 05 \
+#   --space MNI152NLin2009cAsym \
+#   --config complete_workflow_example.yaml \
+#   --debug
+#
+# Output: All SPM outputs in /data/spm/sub-*/func/
+#
+#
+# OPTION B: Run steps separately (all sharing the same OUTPUT_DIR)
+# ────────────────────────────────────────────────────────────────────────────
+#
+# STEP 1: GLM Fitting (model specification + estimation)
+# spmx fmri /data/fmriprep /data/spm --fit \
+#   --participant-label 01 02 03 04 05 \
+#   --space MNI152NLin2009cAsym \
+#   --config complete_workflow_example.yaml \
+#   --debug
+#
+# Output: SPM.mat files + beta maps in /data/spm/sub-*/func/
+#
+#
+# STEP 2: VOI Extraction (timeseries from seed regions)
+# spmx fmri /data/fmriprep /data/spm --voi \
+#   --participant-label 01 02 03 04 05 \
+#   --config complete_workflow_example.yaml \
+#   --debug
+#
+# Output: VOI_*.mat files in /data/spm/sub-*/func/
+#
+#
+# STEP 3: DCM Estimation (model comparison)
+# spmx fmri /data/fmriprep /data/spm --dcm \
+#   --participant-label 01 02 03 04 05 \
+#   --config complete_workflow_example.yaml \
+#   --debug
+#
+# Output: DCM_*.mat files (one per model per subject)
+#        Bayesian model selection can be performed manually using SPM GUI:
+#        - Load all DCM files
+#        - Review F-values and model comparison
+#
+#
+# STEP 4: Cleanup (remove temporary sourcedata)
+# ────────────────────────────────────────────────────────────────────────────
+# Add --clean-spm-files to any command above to delete /data/spm/sourcedata/
+#
+# ============================================================================
