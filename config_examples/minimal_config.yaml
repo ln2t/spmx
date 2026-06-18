@@ -1,0 +1,7 @@
+# spmx: Minimal Configuration
+# This is the most basic config file with just required software paths.
+# All SPM parameters use defaults.
+
+# MATLAB and SPM paths
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12

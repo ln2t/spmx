@@ -1,0 +1,136 @@
+# Task-based Individual-level DCM Analysis
+#
+# This example demonstrates DCM analysis for task-based (non-resting-state) fMRI data at the participant level.
+#
+# Analysis workflow (from spmx documentation):
+# 1. --fit:     First-level GLM fitting with task regressors (produces SPM.mat with design matrix)
+# 2. --voi:     VOI extraction from significant voxels/sphere coordinates (produces VOI_*.mat files)
+# 3. --dcm:     DCM specification and estimation at participant level (uses SPM.xX for task inputs)
+# 4. (--group): Group-level PEB analysis (optional, for multi-level inference)
+#
+# Key differences from resting-state DCM:
+# - Model: "full" (all parameters estimated: A=1, B=1, C=1)
+# - Analysis type: "timeseries" (vs "csd" for resting-state)
+# - Input (DCM.U): Task regressors extracted from SPM.xX design matrix
+# - Each condition/regressor becomes a potential modulator of connectivity
+
+spm_path: "/opt/spm/spm12"
+matlab_path: "matlab"
+clean_matlab_path: false
+
+# First-level fMRI fitting configuration
+fmri:
+  fit:
+    # Hemodynamic model parameters
+    fmri_t: 16           # Microtime resolution (SPM default)
+    fmri_t0: 8           # Microtime onset (middle of TR)
+    hpf: 128             # High-pass filter cutoff (seconds)
+    write_residuals: 0   # Don't save residual images
+    smooth: 0            # No smoothing (analysis-specific choice)
+  
+  # VOI extraction
+  voi:
+    # Define ROI centers using MNI coordinates (or leave empty to use statistical peaks)
+    seeds:
+      - name: "mPFC"        # Medial prefrontal cortex
+        x: 0
+        y: 54
+        z: -6
+      - name: "LIPL"        # Left inferior parietal lobule
+        x: -48
+        y: -66
+        z: 42
+      - name: "RIPL"        # Right inferior parietal lobule
+        x: 48
+        y: -60
+        z: 48
+      - name: "PCC"         # Posterior cingulate cortex
+        x: 0
+        y: -46
+        z: 28
+    
+    # VOI sphere extraction parameters
+    radius: 8             # Radius of VOI sphere in mm
+  
+  # DCM specification and estimation (INDIVIDUAL LEVEL)
+  dcm:
+    # Analysis level: "participant" for individual-level DCM (each subject separately)
+    analysis_level: "participant"
+    
+    # DCM model: "full" for task-based (A, B, C all ones)
+    model: "full"
+    
+    # Analysis type: "timeseries" for task-based DCM
+    # (alternative: "csd" for resting-state connectivity spectral density)
+    analysis: "timeseries"
+    
+    # Optional: subset of VOI seeds to include in DCM (if empty, uses all VOIs)
+    seeds: []  # Use all seeds defined in fmri.voi.seeds
+    
+    # Echo time (T2* weighting) - only needed for CSD analysis
+    # For timeseries analysis, this is less critical but still used by SPM
+    EchoTime: 0.04
+    
+    # Hemodynamic delays for each VOI (in seconds)
+    # Can be overridden per-seed
+    default_delay: 1.5
+    
+    # Optional: per-seed delays (if specified, overrides default_delay)
+    delays:
+      - mPFC: 1.0
+        LIPL: 1.5
+        RIPL: 1.5
+        PCC: 1.2
+    
+    # DCM estimation options
+    options:
+      nonlinear: 0        # 0=linear, 1=bilinear
+      two_state: 0        # 0=one-state, 1=two-state model
+      stochastic: 0       # 0=deterministic, 1=stochastic
+      centre: 0           # 0=no centering, 1=center regressors
+      # NOTE: induced is auto-set based on analysis_type
+      # Do NOT explicitly set 'induced' here - let the pipeline auto-detect:
+      # - For timeseries analysis: induced=0 (auto-set)
+      # - For CSD analysis: induced=1 (auto-set)
+
+# CLI example usage:
+#
+# 1. Run first-level fitting with task regressors:
+#    spmx fit \
+#      --input-dir data/raw_bids \
+#      --output-dir data/derivatives \
+#      --config config_examples/task_based_dcm_full.yaml
+#
+# 2. Extract VOIs from significant voxels:
+#    spmx voi \
+#      --output-dir data/derivatives \
+#      --config config_examples/task_based_dcm_full.yaml \
+#      --threshold 0.001
+#
+# 3. Run individual-level DCM analysis:
+#    spmx dcm \
+#      --output-dir data/derivatives \
+#      --config config_examples/task_based_dcm_full.yaml \
+#      --model full
+#
+# For alternative models (if needed):
+#
+# - Resting-state DCM (non-task data):
+#   --model resting-state-full
+#
+# - Custom model via config:
+#   fmri.dcm.models:
+#     - name: "sparse"
+#       A: [[1, 1, 0, 0], [1, 1, 1, 0], [0, 1, 1, 1], [0, 0, 1, 1]]
+#       B: [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
+#       C: [1, 1, 0, 0]
+
+# Expected outputs after --dcm stage:
+#
+# For each subject/session/model:
+# {BIDS_ROOT}/sub-{LABEL}/[ses-{SESSION}/]func/SPM/
+#   ├── DCM_full.mat                    # DCM structure with estimated parameters
+#   ├── {desc}_connectivity.npy          # Extracted A matrix (endogenous connectivity)
+#   └── {desc}_connectivity.json         # Metadata with ROI names and MNI coordinates
+#
+# Ready for group-level PEB analysis or downstream connectivity visualization.

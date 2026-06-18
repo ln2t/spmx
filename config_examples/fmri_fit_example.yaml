@@ -1,0 +1,33 @@
+# spmx: fMRI GLM Fitting Example
+# This config demonstrates typical options for first-level GLM analysis.
+
+# MATLAB and SPM paths
+matlab_path: /opt/matlab/R2023b/bin/matlab
+spm_path: /opt/spm12
+
+# fMRI-specific parameters
+fmri:
+  fit:
+    # Microtime settings (SPM timing model)
+    fmri_t: 16                # Number of time bins per TR (default: 16)
+    fmri_t0: 8               # Reference scanning time (default: 8)
+    
+    # Filtering and convolution
+    hpf: 128                 # High-pass filter cutoff in seconds (default: 128 = ~2.1 min)
+    cond_tmod: 0             # Temporal modulation of conditions (0=none; default: 0)
+    cond_orth: 1             # Orthogonalize condition derivatives (0=no, 1=yes; default: 1)
+    
+    # Image smoothing
+    smooth: 0                # Gaussian smoothing FWHM in mm (0=no smoothing; default: 0)
+    
+    # Confound regressors
+    regressors:              # Optional: confound regressor names to include
+      - trans_x              #   (from confounds_timeseries.tsv columns)
+      - trans_y
+      - trans_z
+      - rot_x
+      - rot_y
+      - rot_z
+    
+    # Output options
+    write_residuals: 0       # Write residual images (0=no; default: 0)
